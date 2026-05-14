@@ -1,219 +1,606 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dilek Hoca Asistan</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-</head>
-<body class="bg-slate-50">
-    <div id="root"></div>
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Users, 
+  BookOpen, 
+  BrainCircuit, 
+  Plus, 
+  Trash2, 
+  CheckCircle, 
+  ChevronRight,
+  Sparkles,
+  Loader2,
+  GraduationCap,
+  Home,
+  ShieldCheck,
+  AlertTriangle,
+  Lock,
+  Unlock,
+  Upload,
+  FileText,
+  ScanSearch,
+  BarChart3,
+  UserCircle,
+  LogIn,
+  ClipboardList,
+  MousePointer2,
+  X,
+  Star,
+  MessageSquare,
+  Save,
+  FileUp,
+  Type,
+  Award,
+  History,
+  ArrowRight,
+  Key,
+  Lightbulb,
+  Zap
+} from 'lucide-react';
 
-    <script type="text/babel">
-        // Senin API Anahtarın buraya tanımlandı
-        const apiKey = "AIzaSyCBTQ0Bi1tL-TA1ZayOuVwTocak97aUQKY";
+const apiKey = "AIzaSyCBTQ0Bi1tL-TA1ZayOuVwTocak97aUQKY"; // API anahtarı çalışma zamanında ortamdan alınır
 
-        const { useState, useEffect } = React;
-        const { 
-            Users, 
-            ChevronRight, 
-            Clock, 
-            ShieldAlert, 
-            CheckCircle, 
-            MessageSquare, 
-            LogOut, 
-            Layout, 
-            Activity,
-            UserCheck,
-            Search,
-            MoreVertical,
-            Bell
-        } = lucide;
+const App = () => {
+  // Ana Navigasyon State'i
+  const [activeView, setActiveView] = useState('portal_select'); 
+  
+  // Auth State'leri
+  const [currentStudent, setCurrentStudent] = useState(null);
+  const [passwordInput, setPasswordInput] = useState("");
+  
+  // Veri State'leri
+  const [students, setStudents] = useState([
+    { id: 1, name: "Kerem Kırıcı", interest: "Bilgisayar oyunları, Uzay", style: "Görsel", trait: "Analitik Düşünme" },
+    { id: 2, name: "Adil Adar Vural", interest: "Tarih, Çizgi romanlar", style: "Okuma/Yazma", trait: "Yaratıcı Yazım" },
+    { id: 3, name: "Baran Toprak Sezer", interest: "Spor, Basketbol", style: "Kinestetik", trait: "Takım Çalışması" }
+  ]);
+  
+  const [submissions, setSubmissions] = useState([
+    { 
+      id: 101, 
+      studentName: "Kerem Kırıcı", 
+      topic: "Sabır ve Metanet", 
+      content: "Sabır, insanın karşılaştığı zorluklara karşı sakin ve güçlü kalabilmesidir. Hayatta her şey hemen gerçekleşmeyebilir...", 
+      aiScore: 41, 
+      date: "13.05.2026",
+      teacherNote: "Güzel örnekler vermişsin ama biraz daha derinleşebilirsin.",
+      grade: "85"
+    }
+  ]);
 
-        // Orijinal Veri Yapısı ve Fonksiyonlar
-        const App = () => {
-            const [students, setStudents] = useState([
-                { id: 1, name: "Kerem Kırıcı", interests: "Bilgisayar oyunları, Uzay", status: "Bekliyor", score: 41 },
-                { id: 2, name: "Adil Adar Vural", interests: "Tarih, Çizgi romanlar", status: "Tamamlandı", score: 12 },
-                { id: 3, name: "Baran Toprak Sezer", interests: "Spor, Basketbol", status: "İnceleniyor", score: 25 }
-            ]);
+  // Modal ve UI State'leri
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [selectedStudentForAnalysis, setSelectedStudentForAnalysis] = useState(null);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  const [uploadMethod, setUploadMethod] = useState('text'); 
+  const [studentTab, setStudentTab] = useState('new_hw'); 
+  const fileInputRef = useRef(null);
 
-            const [submissions, setSubmissions] = useState([
-                { 
-                    id: 1, 
-                    name: "Kerem Kırıcı", 
-                    title: "Sabır ve Metanet", 
-                    content: "Sabır, insanın karşılaştığı zorluklara karşı sakin ve güçlü kalabilmesidir...", 
-                    aiScore: 41, 
-                    date: "13.05.2026",
-                    grade: 85
-                }
-            ]);
+  // --- ÖĞRENCİ QUİZ & ÖDEV STATE'LERİ ---
+  const [gateStatus, setGateStatus] = useState('topic'); 
+  const [quizTopic, setQuizTopic] = useState("");
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [userAnswers, setUserAnswers] = useState([]);
+  const [homeworkContent, setHomeworkContent] = useState("");
+  const [aiScore, setAiScore] = useState({ ai: 0, human: 100 });
 
-            return (
-                <div className="min-h-screen bg-[#f8fafc] font-sans">
-                    {/* Üst Navigasyon */}
-                    <nav className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-indigo-600 p-2.5 rounded-2xl shadow-lg shadow-indigo-200">
-                                <UserCheck className="text-white w-6 h-6" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-black text-slate-800 tracking-tight">Dilek Hoca <span className="text-indigo-600 font-extrabold">Asistan</span></h1>
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">Sistem Çevrimiçi</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-6">
-                            <div className="hidden md:flex items-center bg-slate-100 px-4 py-2 rounded-xl gap-2 border border-slate-200">
-                                <Search size={18} className="text-slate-400" />
-                                <input type="text" placeholder="Öğrenci ara..." className="bg-transparent border-none text-sm focus:outline-none w-48" />
-                            </div>
-                            <div className="relative">
-                                <Bell className="text-slate-400 cursor-pointer hover:text-indigo-600 transition-colors" />
-                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-                            </div>
-                            <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all text-sm font-bold shadow-sm">
-                                <LogOut size={18} className="text-red-500" />
-                                Güvenli Çıkış
-                            </button>
-                        </div>
-                    </nav>
+  // --- AI ÖNERİSİ ÜRETME (ÖĞRETMEN İÇİN) ---
+  const generateStudentAiAnalysis = async (student) => {
+    setIsAnalyzing(true);
+    setAiAnalysisResult("");
+    const prompt = `Öğrenci Adı: ${student.name}. İlgi Alanları: ${student.interest}. Öğrenme Stili: ${student.style}. Baskın Özellik: ${student.trait}. 
+    Bu öğrenci için Din Kültürü ve Ahlak Bilgisi dersinde ilgisini çekecek, onun tarzına uygun 2 tane yaratıcı proje veya ödev konusu öner. 
+    Kısa, maddeler halinde ve samimi bir dille yaz.`;
+    
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      setAiAnalysisResult(text);
+    } catch (error) {
+      setAiAnalysisResult("Öneri üretilirken bir hata oluştu. Lütfen tekrar deneyin.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
-                    <main className="max-w-[1400px] mx-auto p-10">
-                        {/* Hoşgeldin Başlığı */}
-                        <div className="flex justify-between items-end mb-12">
-                            <div>
-                                <h2 className="text-5xl font-black text-slate-900 mb-3 tracking-tight">Öğretmen Kontrol Paneli</h2>
-                                <p className="text-xl text-slate-400 font-medium italic">"Gelecek, bugünün sınıflarında şekillenir."</p>
-                            </div>
-                            <div className="flex gap-3">
-                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center min-w-[120px]">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Toplam Öğrenci</p>
-                                    <p className="text-2xl font-black text-indigo-600">32</p>
-                                </div>
-                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center min-w-[120px]">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Bekleyen Ödev</p>
-                                    <p className="text-2xl font-black text-orange-500">14</p>
-                                </div>
-                            </div>
-                        </div>
+  // --- PDF OKUMA ---
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || file.type !== "application/pdf") return;
+    setGateStatus('scanning');
+    try {
+      if (!window.pdfjsLib) {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        document.head.appendChild(script);
+        await new Promise(resolve => script.onload = resolve);
+      }
+      const pdfjsLib = window.pdfjsLib;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+      }
+      setHomeworkContent(fullText.trim());
+      setGateStatus('upload');
+    } catch (error) { 
+      setGateStatus('upload'); 
+    }
+  };
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                            {/* Sol: Öğrenci Listesi Detaylı */}
-                            <div className="lg:col-span-8 space-y-8">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-                                            <Users className="text-indigo-600" size={24} />
-                                        </div>
-                                        <h3 className="text-2xl font-black text-slate-800">Öğrenci Yönetimi</h3>
-                                    </div>
-                                    <button className="text-indigo-600 font-bold text-sm hover:underline">Tümünü Gör</button>
-                                </div>
+  // --- AI ANALİZİ (ÖDEV İÇİN) ---
+  const analyzeAiUsage = async (content) => {
+    const prompt = `Analiz et: "${content.substring(0, 1500)}". Bu metnin AI tarafından yazılma olasılığını 0-100 arası sadece sayı olarak ver.`;
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const data = await response.json();
+      return parseInt(data.candidates?.[0]?.content?.parts?.[0]?.text.trim().replace(/[^0-9]/g, '')) || 10;
+    } catch (error) { return 25; }
+  };
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {students.map(student => (
-                                        <div key={student.id} className="group bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 p-6">
-                                                <MoreVertical size={20} className="text-slate-300 cursor-pointer" />
-                                            </div>
-                                            <div className="flex items-center gap-6 mb-6">
-                                                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[1.5rem] flex items-center justify-center font-black text-white text-2xl shadow-lg">
-                                                    {student.name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-black text-slate-900 text-xl mb-1 group-hover:text-indigo-600 transition-colors">{student.name}</h4>
-                                                    <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">{student.interests}</span>
-                                                </div>
-                                            </div>
-                                            <div className="space-y-4">
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-slate-400 font-medium">Akademik Durum</span>
-                                                    <span className={`font-bold ${student.status === 'Tamamlandı' ? 'text-green-500' : 'text-orange-500'}`}>{student.status}</span>
-                                                </div>
-                                                <button className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2">
-                                                    <Activity size={18} />
-                                                    AI Analiz Raporu
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+  const generateQuiz = async () => {
+    setGateStatus('generating');
+    const prompt = `"${quizTopic}" konusunda öğrencinin bilgisini ölçecek 3 kısa açık uçlu soru yaz. Sadece soruları yaz.`;
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      setQuizQuestions(text.split('\n').filter(q => q.trim().length > 5).slice(0, 3));
+      setGateStatus('quiz');
+    } catch (error) { setGateStatus('topic'); }
+  };
 
-                            {/* Sağ: Teslimler ve AI Paneli */}
-                            <div className="lg:col-span-4 space-y-8">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
-                                        <Clock className="text-orange-500" size={24} />
-                                    </div>
-                                    <h3 className="text-2xl font-black text-slate-800">Son Teslimler</h3>
-                                </div>
+  const handleHomeworkSubmission = async () => {
+    setGateStatus('scanning');
+    const aiProb = await analyzeAiUsage(homeworkContent);
+    setAiScore({ ai: aiProb, human: 100 - aiProb });
+    const newSubmission = {
+      id: Date.now(),
+      studentName: currentStudent.name,
+      topic: quizTopic,
+      content: homeworkContent,
+      aiScore: aiProb,
+      date: new Date().toLocaleDateString('tr-TR'),
+      teacherNote: "",
+      grade: ""
+    };
+    setSubmissions([newSubmission, ...submissions]);
+    setGateStatus('result');
+  };
 
-                                <div className="space-y-6">
-                                    {submissions.map(sub => (
-                                        <div key={sub.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative border-t-8 border-t-indigo-600">
-                                            <div className="flex justify-between items-start mb-6">
-                                                <div>
-                                                    <h4 className="font-black text-slate-900 text-lg mb-1">{sub.name}</h4>
-                                                    <p className="text-indigo-600 text-xs font-black uppercase tracking-widest">{sub.title}</p>
-                                                </div>
-                                                <div className={`flex flex-col items-end`}>
-                                                    <span className={`text-[10px] font-black px-3 py-1 rounded-full mb-1 ${sub.aiScore > 40 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                                                        AI ANALİZ: %{sub.aiScore}
-                                                    </span>
-                                                    <span className="text-[10px] text-slate-300 font-bold">{sub.date}</span>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="bg-slate-50 p-5 rounded-2xl mb-6 italic text-slate-500 text-sm leading-relaxed border border-slate-100">
-                                                "{sub.content}"
-                                            </div>
+  const logout = () => {
+    setCurrentStudent(null);
+    setPasswordInput("");
+    setActiveView('portal_select');
+    setStudentTab('new_hw');
+    setGateStatus('topic');
+    setQuizTopic("");
+    setHomeworkContent("");
+  };
 
-                                            <div className="flex justify-between items-center bg-indigo-50 p-4 rounded-2xl">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
-                                                    <span className="text-indigo-900 text-xs font-black uppercase">Başarı Puanı</span>
-                                                </div>
-                                                <span className="text-2xl font-black text-indigo-600">{sub.grade}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    {/* AI Kritik Notu Kartı */}
-                                    <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 rounded-[2.5rem] text-white shadow-xl shadow-indigo-200 relative overflow-hidden">
-                                        <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12">
-                                            <ShieldAlert size={120} />
-                                        </div>
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <ShieldAlert size={24} />
-                                            <h4 className="font-bold uppercase tracking-widest text-xs">Akademik Dürüstlük Uyarısı</h4>
-                                        </div>
-                                        <p className="text-sm leading-relaxed opacity-90 font-medium mb-6">
-                                            Kerem'in son teslimi yüksek oranda yapay zeka tespiti içeriyor. Bir sonraki derste bu kavramları kendi kelimeleriyle anlatmasını isteyebilirsiniz.
-                                        </p>
-                                        <button className="w-full py-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-xl text-xs font-black uppercase transition-all">
-                                            Gözlem Notu Ekle
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </main>
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      
+      {/* MODAL: ÖĞRENCİ ANALİZ VE AI ÖNERİSİ (ÖĞRETMEN İÇİN) */}
+      {selectedStudentForAnalysis && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in duration-300">
+            <div className="p-6 border-b flex justify-between items-center bg-indigo-600 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><UserCircle size={24} /></div>
+                <div>
+                    <h3 className="font-bold leading-none">{selectedStudentForAnalysis.name}</h3>
+                    <p className="text-[10px] opacity-80 mt-1 uppercase font-bold tracking-wider">Profil Analizi</p>
                 </div>
-            );
-        };
+              </div>
+              <button onClick={() => {setSelectedStudentForAnalysis(null); setAiAnalysisResult("");}} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
+            </div>
+            
+            <div className="p-8 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">İlgi Alanları</p>
+                        <p className="text-sm font-bold text-slate-700">{selectedStudentForAnalysis.interest}</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Öğrenme Stili</p>
+                        <p className="text-sm font-bold text-slate-700">{selectedStudentForAnalysis.style}</p>
+                    </div>
+                </div>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+                <div className="space-y-3">
+                    <h4 className="text-xs font-black text-indigo-600 uppercase flex items-center gap-2">
+                        <Sparkles size={14} /> Yapay Zeka Eğitim Önerisi
+                    </h4>
+                    
+                    {!aiAnalysisResult && !isAnalyzing ? (
+                        <button 
+                            onClick={() => generateStudentAiAnalysis(selectedStudentForAnalysis)}
+                            className="w-full py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-bold border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
+                        >
+                            <Zap size={18} /> Kişiselleştirilmiş Öneri Üret
+                        </button>
+                    ) : isAnalyzing ? (
+                        <div className="p-8 bg-slate-50 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-3">
+                            <Loader2 size={24} className="animate-spin text-indigo-600" />
+                            <p className="text-xs font-bold text-slate-400 animate-pulse">Öğrenci verileri işleniyor...</p>
+                        </div>
+                    ) : (
+                        <div className="p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-sm text-slate-700 leading-relaxed animate-in fade-in slide-in-from-top-2">
+                            {aiAnalysisResult}
+                        </div>
+                    )}
+                </div>
+            </div>
+            
+            <div className="p-6 bg-slate-50 border-t flex justify-center">
+              <p className="text-[10px] text-slate-400 font-medium text-center">Bu analiz, öğrencinin sisteme kayıtlı ilgi alanlarına göre Gemini tarafından anlık üretilmiştir.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ÖĞRETMEN DEĞERLENDİRME */}
+      {selectedSubmission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b flex justify-between items-center bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><FileText size={20} /></div>
+                <h3 className="font-bold">{selectedSubmission.studentName} - {selectedSubmission.topic}</h3>
+              </div>
+              <button onClick={() => setSelectedSubmission(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} /></button>
+            </div>
+            <div className="p-8 overflow-y-auto space-y-6">
+              <div className="p-4 bg-slate-50 rounded-2xl text-sm italic border border-slate-100 whitespace-pre-wrap">{selectedSubmission.content}</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
+                  <p className="text-[10px] font-bold text-red-600 uppercase">AI Analiz Skoru</p>
+                  <p className="text-2xl font-black text-red-700">%{selectedSubmission.aiScore}</p>
+                </div>
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase">Tarih</p>
+                  <p className="text-xl font-bold text-emerald-700">{selectedSubmission.date}</p>
+                </div>
+              </div>
+              <div className="space-y-4 pt-4 border-t">
+                <div className="grid grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Puan</label>
+                    <input type="number" id="m-grade" defaultValue={selectedSubmission.grade} className="w-full p-3 border rounded-xl font-bold text-center outline-none focus:border-indigo-500" />
+                  </div>
+                  <div className="col-span-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Geri Bildirim</label>
+                    <textarea id="m-note" defaultValue={selectedSubmission.teacherNote} className="w-full p-3 border rounded-xl text-sm h-20 outline-none focus:border-indigo-500" placeholder="Öğrenciye mesajınız..." />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t flex justify-end">
+              <button onClick={() => {
+                const g = document.getElementById('m-grade').value;
+                const n = document.getElementById('m-note').value;
+                setSubmissions(submissions.map(s => s.id === selectedSubmission.id ? {...s, grade: g, teacherNote: n} : s));
+                setSelectedSubmission(null);
+              }} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all">
+                <Save size={18} /> Değerlendirmeyi Kaydet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NAVBAR */}
+      <nav className="bg-white border-b px-6 py-4 sticky top-0 z-20 shadow-sm flex justify-between items-center">
+        <div className="flex items-center space-x-3 cursor-pointer" onClick={logout}>
+          <div className="bg-indigo-600 p-2 rounded-xl"><GraduationCap className="text-white" size={24} /></div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Dilek Hoca <span className="text-indigo-600">Asistan</span></h1>
+            <p className="text-[10px] uppercase font-bold text-slate-400">Eğitim Portalı</p>
+          </div>
+        </div>
+        {activeView !== 'portal_select' && (
+          <button onClick={logout} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600">
+            <Home size={14} /> Ana Sayfa
+          </button>
+        )}
+      </nav>
+
+      <main className="max-w-6xl mx-auto p-6">
+        
+        {/* PORTAL SEÇİMİ */}
+        {activeView === 'portal_select' && (
+          <div className="py-20 space-y-12 animate-in fade-in zoom-in duration-500">
+            <div className="text-center">
+              <h2 className="text-4xl font-black tracking-tight">Sisteme Giriş Yapın</h2>
+              <p className="text-slate-500 mt-2">Lütfen devam etmek için yetkinizi seçin.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              <button onClick={() => setActiveView('teacher_login')} className="bg-white p-10 rounded-[2.5rem] border-2 hover:border-indigo-500 shadow-xl transition-all text-left group">
+                <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><Lock className="text-indigo-600" size={32} /></div>
+                <h3 className="text-2xl font-bold">Öğretmen Portalı</h3>
+                <p className="text-slate-500 mt-2">Ödev değerlendirme, analiz ve öğrenci takibi.</p>
+                <div className="mt-6 flex items-center text-indigo-600 font-bold text-sm gap-2">Giriş Yap <ArrowRight size={16} /></div>
+              </button>
+              <button onClick={() => setActiveView('student_login')} className="bg-white p-10 rounded-[2.5rem] border-2 hover:border-emerald-500 shadow-xl transition-all text-left group">
+                <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform"><UserCircle className="text-emerald-600" size={32} /></div>
+                <h3 className="text-2xl font-bold">Öğrenci Portalı</h3>
+                <p className="text-slate-500 mt-2">Quiz kapısından geç ve ödevlerini teslim et.</p>
+                <div className="mt-6 flex items-center text-emerald-600 font-bold text-sm gap-2">Panelime Git <ArrowRight size={16} /></div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ÖĞRETMEN GİRİŞ EKRANI */}
+        {activeView === 'teacher_login' && (
+          <div className="max-w-md mx-auto py-20 animate-in slide-in-from-bottom-8">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4"><Key size={32} /></div>
+                <h3 className="text-2xl font-bold">Öğretmen Girişi</h3>
+                <p className="text-slate-500 text-sm">Lütfen yönetici şifrenizi girin.</p>
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); if(passwordInput === "admin") setActiveView('teacher_dashboard'); }} className="space-y-4">
+                <input 
+                  type="password" 
+                  className="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:border-indigo-500 text-center text-xl tracking-widest" 
+                  placeholder="••••"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  autoFocus
+                />
+                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 transition-colors">Giriş Yap</button>
+                <button type="button" onClick={() => setActiveView('portal_select')} className="w-full text-slate-400 text-sm font-bold">Geri Dön</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ÖĞRENCİ SEÇİM EKRANI */}
+        {activeView === 'student_login' && (
+          <div className="max-w-2xl mx-auto py-10 animate-in slide-in-from-bottom-8">
+            <div className="text-center mb-10">
+              <h3 className="text-3xl font-black">Sen Kimsin?</h3>
+              <p className="text-slate-500">Kendi panelini görüntülemek için ismine tıkla.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {students.map(s => (
+                <button key={s.id} onClick={() => { setCurrentStudent(s); setActiveView('student_dashboard'); }} className="bg-white p-6 rounded-3xl border shadow-md hover:border-emerald-500 transition-all flex items-center gap-4 group">
+                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">{s.name.charAt(0)}</div>
+                  <div className="text-left">
+                    <p className="font-bold text-lg">{s.name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">{s.interest}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setActiveView('portal_select')} className="mt-12 w-full text-slate-400 font-bold flex items-center justify-center gap-2 hover:text-slate-600 transition-colors">
+              <ArrowRight size={16} className="rotate-180" /> Ana Menüye Dön
+            </button>
+          </div>
+        )}
+
+        {/* ÖĞRETMEN DASHBOARD */}
+        {activeView === 'teacher_dashboard' && (
+          <div className="space-y-10 animate-in fade-in duration-700">
+            <div className="flex justify-between items-end border-b pb-6">
+              <div>
+                <h2 className="text-3xl font-black">Öğretmen Kontrol Paneli</h2>
+                <p className="text-slate-500">Hoş geldiniz Dilek Hocam, bugün sınıflarınız nasıl?</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* ÖĞRENCİ LİSTESİ VE ANALİZ BUTONLARI */}
+              <div className="lg:col-span-2 space-y-6">
+                <h3 className="text-xl font-bold flex items-center gap-2"><Users className="text-indigo-600" /> Öğrenci Listesi</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {students.map(s => (
+                    <div key={s.id} className="bg-white p-6 rounded-[2rem] border shadow-sm flex flex-col gap-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold">{s.name.charAt(0)}</div>
+                        <div>
+                            <p className="font-bold">{s.name}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">{s.interest}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedStudentForAnalysis(s)}
+                        className="w-full py-2.5 bg-slate-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 border border-slate-100"
+                      >
+                        <BrainCircuit size={14} /> AI Önerisi Üret
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* SON TESLİMLER */}
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold flex items-center gap-2"><History className="text-indigo-600" /> Son Teslimler</h3>
+                <div className="space-y-4">
+                  {submissions.map(sub => (
+                    <button key={sub.id} onClick={() => setSelectedSubmission(sub)} className="w-full text-left bg-white p-5 rounded-2xl border shadow-sm hover:border-indigo-400 transition-all group relative overflow-hidden">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-bold text-sm">{sub.studentName}</p>
+                          <p className="text-[10px] text-indigo-500 font-bold uppercase">{sub.topic}</p>
+                        </div>
+                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold ${sub.aiScore > 50 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                          AI: %{sub.aiScore}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-400 line-clamp-1 italic mb-3">"{sub.content}"</p>
+                      
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                        <span className="text-[10px] text-slate-400">{sub.date}</span>
+                        {sub.grade ? (
+                          <span className="bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black">NOT: {sub.grade}</span>
+                        ) : (
+                          <span className="text-amber-500 text-[10px] font-bold">Bekliyor</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ÖĞRENCİ DASHBOARD (Öncekiyle Aynı) */}
+        {activeView === 'student_dashboard' && currentStudent && (
+          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-700">
+             <div className="bg-white p-6 rounded-3xl border shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center font-black text-xl">{currentStudent.name.charAt(0)}</div>
+                <div><h2 className="text-2xl font-bold">Hoş Geldin, {currentStudent.name}</h2><p className="text-sm text-slate-500">Bugün ne yapmak istersin?</p></div>
+              </div>
+              <div className="flex bg-slate-100 p-1 rounded-2xl w-full sm:w-auto">
+                <button onClick={() => setStudentTab('new_hw')} className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${studentTab === 'new_hw' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500'}`}><Plus size={16} /> Ödev Yükle</button>
+                <button onClick={() => setStudentTab('graded_hw')} className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${studentTab === 'graded_hw' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}><Award size={16} /> Karnem (Notlar)</button>
+              </div>
+            </div>
+
+            {studentTab === 'new_hw' ? (
+              <div className="bg-white rounded-[2.5rem] border shadow-xl p-8 min-h-[500px] flex flex-col justify-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-100">
+                  <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: gateStatus === 'topic' ? '25%' : gateStatus === 'quiz' ? '60%' : '100%' }} />
+                </div>
+
+                {gateStatus === 'topic' && (
+                  <div className="space-y-8 text-center animate-in zoom-in duration-300">
+                    <div className="w-20 h-20 bg-indigo-50 rounded-2xl mx-auto flex items-center justify-center text-indigo-600"><BookOpen size={40} /></div>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-black">Quiz Kapısı</h3>
+                      <p className="text-slate-500">Ödev teslimi için önce bu konuyu bildiğini kanıtla.</p>
+                    </div>
+                    <div className="max-w-md mx-auto">
+                      <input className="w-full p-5 bg-slate-50 rounded-2xl border text-lg text-center outline-none focus:border-indigo-400" placeholder="Örn: Sabır ve Metanet" value={quizTopic} onChange={e => setQuizTopic(e.target.value)} />
+                      <button disabled={quizTopic.length < 3} onClick={generateQuiz} className="w-full mt-4 py-5 bg-slate-900 text-white rounded-2xl font-bold shadow-xl hover:bg-slate-800 transition-colors disabled:opacity-50">Soruları Üret</button>
+                    </div>
+                  </div>
+                )}
+
+                {gateStatus === 'generating' && (
+                  <div className="text-center space-y-4 animate-pulse"><Loader2 size={48} className="animate-spin text-indigo-600 mx-auto" /><p className="font-black text-slate-400 uppercase tracking-widest">Yapay Zeka Soruları Hazırlıyor...</p></div>
+                )}
+
+                {gateStatus === 'quiz' && (
+                  <div className="space-y-6 animate-in slide-in-from-right-8">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg uppercase">{quizTopic}</span>
+                      <span className="text-slate-300 font-black">{currentQuestion + 1} / 3</span>
+                    </div>
+                    <h2 className="text-2xl font-bold leading-tight">{quizQuestions[currentQuestion]}</h2>
+                    <textarea className="w-full p-6 h-40 bg-slate-50 border rounded-3xl outline-none focus:border-indigo-400 text-lg" placeholder="Cevabınız..." value={userAnswers[currentQuestion] || ""} onChange={e => { const a = [...userAnswers]; a[currentQuestion] = e.target.value; setUserAnswers(a); }} />
+                    <button onClick={() => currentQuestion < 2 ? setCurrentQuestion(v => v + 1) : setGateStatus('upload')} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-bold text-lg">
+                      {currentQuestion < 2 ? "Sonraki Soru" : "Ödev Yüklemeye Geç"}
+                    </button>
+                  </div>
+                )}
+
+                {gateStatus === 'upload' && (
+                  <div className="space-y-6 animate-in slide-in-from-bottom-4">
+                    <div className="flex justify-between items-center border-b pb-4">
+                      <h3 className="text-xl font-bold">Ödevini Teslim Et</h3>
+                      <div className="flex bg-slate-100 p-1 rounded-xl">
+                        <button onClick={() => setUploadMethod('text')} className={`px-4 py-2 rounded-lg text-[10px] font-bold ${uploadMethod === 'text' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>METİN</button>
+                        <button onClick={() => setUploadMethod('pdf')} className={`px-4 py-2 rounded-lg text-[10px] font-bold ${uploadMethod === 'pdf' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-400'}`}>PDF YÜKLE</button>
+                      </div>
+                    </div>
+                    {uploadMethod === 'text' ? (
+                      <textarea className="w-full p-6 h-60 bg-slate-50 border rounded-3xl text-sm outline-none focus:border-indigo-400" placeholder="Ödev metnini buraya yapıştır..." value={homeworkContent} onChange={e => setHomeworkContent(e.target.value)} />
+                    ) : (
+                      <div className="h-60 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center bg-slate-50/50 cursor-pointer hover:border-red-400 transition-colors" onClick={() => fileInputRef.current.click()}>
+                        <FileUp size={40} className="text-slate-300 mb-2" />
+                        <p className="font-bold text-slate-500 text-sm">PDF Dosyasını Seçin</p>
+                        <input type="file" ref={fileInputRef} className="hidden" accept=".pdf" onChange={handlePdfUpload} />
+                      </div>
+                    )}
+                    <button disabled={homeworkContent.length < 50} onClick={handleHomeworkSubmission} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors disabled:opacity-50"><ScanSearch size={20} /> AI Analizi ve Teslim Et</button>
+                  </div>
+                )}
+
+                {gateStatus === 'scanning' && (
+                  <div className="text-center space-y-4 animate-pulse"><Loader2 size={48} className="animate-spin text-red-500 mx-auto" /><p className="font-black text-slate-400 uppercase tracking-widest">Ödevin Özgünlüğü İnceleniyor...</p></div>
+                )}
+
+                {gateStatus === 'result' && (
+                  <div className="text-center space-y-6 animate-in zoom-in-95">
+                    <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto"><CheckCircle size={40} /></div>
+                    <h3 className="text-3xl font-black">Başarıyla Teslim Edildi!</h3>
+                    <div className="bg-slate-50 p-6 rounded-3xl border">
+                      <div className="flex justify-between mb-2"><span className="text-xs font-bold text-slate-400">METİN ÖZGÜNLÜĞÜ</span><span className="text-2xl font-black text-emerald-600">%{aiScore.human}</span></div>
+                      <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 transition-all duration-1000" style={{width: `${aiScore.human}%`}} /></div>
+                    </div>
+                    <button onClick={() => setStudentTab('graded_hw')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold">Notlarımı Gör</button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4 animate-in fade-in duration-500">
+                <h3 className="text-xl font-bold flex items-center gap-2 px-2"><Award className="text-amber-500" /> Notlandırılmış Ödevlerim</h3>
+                {submissions.filter(s => s.studentName === currentStudent.name).length === 0 ? (
+                  <div className="bg-white p-12 rounded-[2rem] border text-center text-slate-400 italic">Henüz notlandırılmış ödevin bulunmuyor.</div>
+                ) : (
+                  submissions
+                    .filter(s => s.studentName === currentStudent.name)
+                    .map(hw => (
+                      <div key={hw.id} className="bg-white p-6 rounded-3xl border shadow-sm space-y-4 border-l-4 border-l-indigo-500 hover:shadow-md transition-shadow">
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                          <div>
+                            <h4 className="font-bold text-lg text-slate-800">{hw.topic}</h4>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">{hw.date} tarihinde teslim edildi</p>
+                          </div>
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="bg-red-50 px-3 py-1.5 rounded-xl border border-red-100 text-center flex-1 sm:flex-none">
+                              <p className="text-[8px] font-bold text-red-500 uppercase leading-none mb-1">AI SKOR</p>
+                              <p className="text-sm font-black text-red-600 leading-none">%{hw.aiScore}</p>
+                            </div>
+                            <div className="bg-indigo-600 px-5 py-2.5 rounded-2xl shadow-lg shadow-indigo-100 text-center min-w-[80px] flex-1 sm:flex-none">
+                              <p className="text-[9px] font-bold text-indigo-100 uppercase leading-none mb-1">PUAN</p>
+                              <p className="text-xl font-black text-white leading-none">{hw.grade || '---'}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative">
+                          <MessageSquare size={14} className="absolute -top-2 -left-2 text-indigo-400 bg-white rounded-full p-0.5 border" />
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Öğretmen Geri Bildirimi:</p>
+                          <p className="text-sm text-slate-600 italic leading-relaxed">
+                            {hw.teacherNote ? hw.teacherNote : "Öğretmeniniz henüz bir değerlendirme notu eklemedi."}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+      </main>
+    </div>
+  );
+};
+
+export default App;
